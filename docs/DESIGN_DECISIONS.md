@@ -180,15 +180,26 @@ It does not automatically store complete conversation history.
 
 ## DD-007 — Action Provenance Uses a DAG Data Model
 
-**Status:** PROPOSED
+**Status:** ACCEPTED
 
 ### Decision
 
-Represent safety-relevant execution/data lineage as a directed acyclic graph (DAG).
+Represent safety-relevant execution/data lineage as an in-memory directed acyclic graph (DAG) implemented in `guardx.provenance`.
 
-The initial prototype should use a simple in-memory Python representation.
+The implementation uses standard-library Python (`ActionProvenanceDAG`, `ProvenanceNode`, `ProvenanceEdge`). A graph database is NOT required.
 
-A graph database is NOT required.
+**Node Types (`ProvenanceNodeType`):**
+- `USER_INPUT`, `MODEL_OUTPUT`, `TOOL_CALL`, `TOOL_RESULT`, `RESOURCE`, `DATA`, `TRANSFORMATION`, `EXTERNAL_DESTINATION`
+
+**Edge Types (`ProvenanceEdgeType`):**
+- `READS`, `PRODUCES`, `DERIVED_FROM`, `TRANSFORMS`, `USES`, `SENDS_TO`, `RETURNS`
+
+**Graph Invariants:**
+1. Unique node IDs per DAG.
+2. Directed edges point from source to destination (flow of causality/derivation).
+3. Strict cycle prevention: self-loops and multi-node cycles raise `ProvenanceCycleError`.
+4. Strict session isolation: DAGs enforce `session_id` consistency.
+5. Immutability & Data Minimization: nodes and edges are frozen dataclasses storing references, descriptions, and metadata rather than raw sensitive data or complete conversation transcripts.
 
 ### Rationale
 
@@ -222,49 +233,35 @@ A DAG adds modest complexity compared with a linked list but accurately represen
 
 Prototype requirements demonstrate that simpler lineage is sufficient or persistence/query scale requires another backend.
 
+
 ---
 
 ## DD-008 — Risk Propagation Uses Safety Properties
 
-**Status:** PROPOSED
+**Status:** ACCEPTED
 
 ### Decision
 
-Risk propagation should primarily operate on semantic safety properties/labels rather than a single numeric risk score.
+Risk propagation operates on semantic safety properties (`SafetyProperty`) rather than arbitrary numeric risk scores.
 
-Possible properties include:
+**Semantic Vocabulary (`SafetyProperty`):**
+- `PII`, `CREDENTIAL`, `SECRET`, `CONFIDENTIAL`, `FINANCIAL_DATA`, `UNTRUSTED_SOURCE`
 
-- PII
-- CREDENTIAL
-- FINANCIAL_DATA
-- CONFIDENTIAL
-- UNTRUSTED_SOURCE
-- EXTERNAL_DESTINATION
-- MALICIOUS_CONTENT
+**Propagation Engine & Semantics (`PropertyPropagationEngine`):**
+1. **Conservative Preservation (Default):** Unknown transformations preserve all inherited properties to prevent laundering.
+2. **Trusted Reduction:** Only explicitly registered, trusted rules (`TransformationRule(is_trusted_reduction=True, reduces_properties=...)`) can remove specific properties (e.g. `VERIFIED_PII_REDACTION` removes `PII` but preserves `CONFIDENTIAL`).
+3. **Property Introduction:** Transformations or sources can explicitly introduce properties (e.g., `EXTERNAL_INGESTION` introduces `UNTRUSTED_SOURCE`).
+4. **Conservative Merging:** Multiple parent branches combine properties via conservative set union.
+5. **Non-destructive Immutability:** Historical `ProvenanceNode` objects remain immutable; effective properties are computed dynamically over DAG topological ordering.
 
 ### Rationale
 
-Different risks behave differently under transformations.
-
-A single numeric score loses this semantic information.
-
-### Example
-
-PII data
-   |
-aggregate
-   v
-aggregated statistics
-
-The PII property may be reduced or removed if the transformation is verified.
-
-CONFIDENTIAL may remain.
+Different risks behave differently under transformations. A single numeric score loses essential semantic information required for contextual authorization.
 
 ### Constraint
 
-Risk reduction must not be assumed automatically.
+Risk reduction is never assumed automatically. Unverified transformations (e.g., standard summarization, format conversion) strictly preserve sensitive properties.
 
-Only known/verified transformations may declare reduction/removal of properties.
 
 ---
 
@@ -424,6 +421,35 @@ Libraries/frameworks will be selected during implementation planning based on de
 
 ---
 
+## DD-016 — Deterministic Arbiter Baseline Precedence
+
+**Status:** PROPOSED
+
+### Decision
+
+The Phase 5 deterministic Arbiter resolves `RiskEngineResult` into an immutable `ArbiterResult` containing the final `Verdict` using an explicit 7-tier deterministic precedence:
+
+1. **Explicit deterministic hard policy violations:**
+   `policy.forbidden_action`, `policy.forbidden_destination`, `policy.malformed_policy` require fail-safe `Verdict.BLOCK`.
+2. **Critical/high-confidence safety blocks:**
+   `RecommendedAction.BLOCK` from Security or Privacy Guards requires `Verdict.BLOCK` when no safe mitigation exists.
+3. **Missing Guard coverage fail-safe handling:**
+   If all applicable Guards fail on `ACTION` events, or any Guard fails on an executing `ACTION`, return `Verdict.BLOCK` (fail closed). If all Guards fail on non-action events or partial failure occurs on `INPUT`/`OUTPUT`, return `Verdict.HUMAN_REVIEW`. `SKIPPED` guards do not count as failures.
+4. **Human review requirements:**
+   Explicit `RecommendedAction.HUMAN_REVIEW` (e.g. `policy.human_review_required` or Guard review recommendations) returns `Verdict.HUMAN_REVIEW`.
+5. **Mitigation / Modification recommendations:**
+   `RecommendedAction.MODIFY` recommendations return `Verdict.MODIFY`.
+6. **Lower-risk informational findings:**
+   `RecommendedAction.ALLOW` findings (such as personal identifiers in benign conversational context) remain `Verdict.ALLOW`.
+7. **Clean evaluation default:**
+   Zero findings with successful evaluation coverage defaults to `Verdict.ALLOW`.
+
+### Rationale
+
+This provides a transparent, auditable, deterministic baseline without majority voting, without LLM dependencies, and without collapsing severity and confidence into arbitrary numeric formulas.
+
+---
+
 # Unresolved Decisions
 
 The following remain open:
@@ -434,7 +460,7 @@ The following remain open:
 4. MODIFY execution semantics.
 5. Action-impact classification.
 6. Investigation trigger calibration.
-7. Arbiter baseline rules.
+7. Arbiter baseline rules evaluation and refinement.
 8. Audit persistence.
 9. Whether model-assisted arbitration improves results.
 10. Whether provenance DAG complexity is justified experimentally.

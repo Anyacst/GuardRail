@@ -2,11 +2,12 @@
 
 **A runtime safety framework for LLM applications and agentic AI systems.**
 
-> ⚠️ **Current Status: Phase 0 — Architecture and Specification**
+> ℹ️ **Status: Phases 1–9 Complete — Deterministic Execution-Aware Core & Showcase Demo**
 >
-> No production code exists. This repository contains architectural documentation,
-> design decisions, and development tooling only. Everything described below under
-> "Planned Architecture" represents the target design, not implemented functionality.
+> GuardX features a functional deterministic core in Python covering domain models,
+> specialized Guards (Security, Privacy, Policy), Risk Engine orchestration, Arbiter,
+> Action Provenance DAG, Semantic Property Propagation, Action Authorization,
+> and an interactive Showcase Demonstration layer.
 
 ## What Is GuardX
 
@@ -97,6 +98,40 @@ guardrails/
 | [Current State](docs/CURRENT_STATE.md) | What is and isn't implemented |
 | [Threat Model](docs/THREAT_MODEL.md) | Threat taxonomy and defense mapping |
 | [Evaluation Plan](docs/EVALUATION_PLAN.md) | Baselines, metrics, and empirical evaluation |
+
+## Interactive Showcase Demonstration (Phase 9)
+
+GuardX includes a presentable demonstration layer that exercises the **real** GuardX core pipeline (zero hardcoded verdicts or mocked safety outcomes).
+
+### Available Interfaces
+1. **Interactive Web Dashboard**: Modern, zero-dependency browser UI with SVG DAG visualizer, live guard status cards, evidence inspector, and a 6-step data-flow walkthrough.
+2. **Terminal CLI Runner**: Rich ANSI terminal demonstration with lineage graphs and interactive menus.
+
+### Running the Demo
+The demonstration uses only Python standard library components (`http.server`, `urllib`, `dataclasses`, `asyncio`):
+
+```bash
+# Launch the Interactive Web UI (Default: http://127.0.0.1:8080)
+python3 demo/app.py
+
+# Launch the Interactive ANSI Terminal CLI
+python3 demo/app.py --cli
+
+# Run a specific scenario directly
+python3 demo/app.py --scenario data_exfiltration_unsafe
+```
+
+### Predefined Scenarios
+- **Scenario 1 — Benign Request**: Clean query ("What is the capital of Japan?") evaluated concurrently -> `ALLOW`.
+- **Scenario 2 — Prompt Injection**: Direct override attack evaluated deterministically by `SecurityGuard` -> `BLOCK`.
+- **Scenario 3A — Conversational PII**: Personal identifier (email) flagged for audit tracking without false-positive blocking -> `ALLOW`.
+- **Scenario 3B — Policy-Forbidden Tool**: Shell execution restricted by organizational policy -> `BLOCK`.
+- **Scenario 4 — Primary Showcase (Data Exfiltration)**: Agent accesses `customers.csv` [PII, CONFIDENTIAL], derives a summary, and attempts `send_email` to an external domain. Semantic properties propagate through the `ActionProvenanceDAG`, `ActionAuthorizationEngine` identifies unauthorized egress, and `Arbiter` blocks the action -> `BLOCK`.
+- **Scenario 5 — Safe Contrasting Data Flow**: Same action (`send_email`) accessing public data sent to an internal recipient -> `ALLOW`.
+
+### Real vs. Simulated Components
+- **Simulated**: The mock database export (`customers.csv`), tool execution (`send_email`, `read_file`), and network endpoints (no real emails sent or networks touched).
+- **Real**: `SafetyEvent`, `EvaluationContext`, `SecurityGuard`, `PrivacyGuard`, `PolicyGuard`, `RiskEngine`, `ActionProvenanceDAG`, `PropertyPropagationEngine`, `ActionAuthorizationEngine`, and `Arbiter`.
 
 ## License
 

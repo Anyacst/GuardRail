@@ -2,9 +2,11 @@
 
 ## Current Phase
 
-**Phase 4 Completed — Ready for Phase 5 (Deterministic Arbiter)**
+**Phase 9 Completed — First Presentable GuardX Demo**
 
-Phase 1 foundational domain models, Phase 2 deterministic Security Guard, Phase 3 Risk Engine Guard orchestration layer, and Phase 4 Privacy & Policy Guards have been implemented and verified with 78 unit tests.
+Phase 1 foundational domain models, Phase 2 deterministic Security Guard, Phase 3 Risk Engine Guard orchestration layer, Phase 4 Privacy & Policy Guards, Phase 5 Deterministic Arbiter, Phase 6 Action Provenance DAG, Phase 7 Semantic Safety Property Propagation, Phase 8 Action Authorization, and Phase 9 Showcase Demonstration have been implemented and verified with 179 passing unit and integration tests (170 baseline tests + 9 Phase 9 demo tests).
+
+
 
 ---
 
@@ -98,14 +100,65 @@ Implemented in `guardx/guards/privacy/` and `guardx/guards/policy/`:
    - Generic orchestration of `SecurityGuard`, `PrivacyGuard`, and `PolicyGuard` concurrently via `RiskEngine`.
    - Multi-domain Evidence aggregation verified across Security, Privacy, and Policy findings for a single event without majority voting.
 
-4. **Unit Test Suite (`tests/`):**
-   - 78 total passing tests (27 Phase 1 + 11 Phase 2 + 14 Phase 3 + 12 Privacy + 10 Policy + 4 Multi-Guard integration).
+4. **Deterministic Arbiter (Phase 5):**
+   - Implemented in `guardx/arbiter/` (`Arbiter`, `ArbiterResult`).
+   - Immutable structured `ArbiterResult` capturing `verdict`, `reason`, `reason_code`, `decisive_evidence`, `considered_evidence`, `missing_guard_coverage`.
+   - Strict 7-level deterministic precedence enforcing DD-011 and DD-016:
+     1. Deterministic hard policy constraints (`policy.forbidden_action`, `policy.forbidden_destination`, `policy.malformed_policy` -> `BLOCK`).
+     2. Critical/high-confidence security/privacy block recommendations -> `BLOCK`.
+     3. Missing Guard coverage fail-safe handling (`ALL_GUARDS_FAILED` on `ACTION` or any failed Guard on executing `ACTION` -> `BLOCK`; non-action/input failures -> `HUMAN_REVIEW`).
+     4. Policy or Guard human review requirements -> `HUMAN_REVIEW`.
+     5. Modification recommendations -> `MODIFY`.
+     6. Lower-risk findings with `RecommendedAction.ALLOW` (e.g. personal identifiers) -> `ALLOW`.
+     7. Clean evaluation default -> `ALLOW`.
+   - No majority voting, no LLM usage, no collapsing of severity and confidence into arbitrary formulas.
+
+5. **Unit & Integration Test Suite (`tests/`):**
+5. **Action Provenance DAG (Phase 6):**
+   - Implemented in `guardx/provenance/` (`ActionProvenanceDAG`, `ProvenanceNode`, `ProvenanceEdge`, `ProvenanceNodeType`, `ProvenanceEdgeType`).
+   - Pure standard-library Python in-memory representation tracking data and execution lineage.
+   - Enforces graph invariants: unique node IDs, cycle prevention (`ProvenanceCycleError` on self-loops or multi-node cycles), session boundary isolation (`SessionMismatchError`), and deterministic BFS traversals.
+   - Provides key lineage queries: `derives_from(target, source)`, `get_ancestors()`, `get_descendants()`, `get_direct_parents()`, `get_direct_children()`.
+   - Adheres strictly to data minimization: stores safe identifiers, references, descriptions, and metadata rather than raw payloads or conversation logs.
+   - Compatible placeholder for Phase 7 semantic safety properties (`safety_properties` sequence on nodes).
+
+6. **Semantic Safety Property Propagation (Phase 7):**
+   - Implemented in `guardx/provenance/` (`PropertyPropagationEngine`, `TransformationRule`, `TransformationType`, `SafetyProperty`).
+   - Typed semantic property vocabulary: `PII`, `CREDENTIAL`, `SECRET`, `CONFIDENTIAL`, `FINANCIAL_DATA`, `UNTRUSTED_SOURCE`.
+   - Conservative default: unverified operations (e.g. summarization, format conversion) strictly preserve sensitive properties.
+   - Trusted reduction: property removal requires an explicitly registered, authorized `TransformationRule(is_trusted_reduction=True)`.
+   - Property introduction: sources or operations can introduce properties (e.g. `EXTERNAL_INGESTION` introduces `UNTRUSTED_SOURCE`).
+   - Multi-parent union: combining branches merges safety properties conservatively via set union.
+   - Non-destructive computation: historical `ProvenanceNode` objects remain immutable; effective properties are computed dynamically over DAG topological ordering.
+
+8. **Action Authorization (Phase 8):**
+   - Implemented in `guardx/authorization/` (`ActionAuthorizationEngine`, `ActionRequest`, `AuthorizationRiskType`).
+   - Pure standard-library Python pre-execution inspection of proposed `ACTION` events.
+   - Stable machine-readable risk types: `policy.unauthorized_sensitive_data_transfer`, `policy.missing_action_permission`, `policy.restricted_resource_use`, `policy.action_human_review_required`, `policy.malformed_action_request`.
+   - Inspects proposed actions before execution: resolves action names, parameters, destination addresses, and permissions.
+   - Integrates directly with `ActionProvenanceDAG` and `PropertyPropagationEngine`: resolves upstream data lineage, computes effective propagated properties, and evaluates data egress rules.
+   - Evaluates policy constraints: required permissions for sensitive actions, human review gates, restricted destinations, external vs internal domains, and forbidden property egress rules.
+   - Emits structured, deeply immutable `Evidence` records with recommended actions (`RecommendedAction.BLOCK`, `RecommendedAction.HUMAN_REVIEW`) feeding directly into deterministic `Arbiter` (preserving Arbiter final decision ownership).
+   - Validated against end-to-end showcase: `customers.csv` [PII, CONFIDENTIAL] exfiltration via `send_email` blocked with `Verdict.BLOCK`; contrasting non-sensitive data flow cleanly allowed with `Verdict.ALLOW`.
+
+9. **Unit & Integration Test Suite (`tests/`):**
+   - 170 total passing tests:
+     - 27 Phase 1 domain model & contract tests
+     - 11 Phase 2 SecurityGuard tests
+     - 14 Phase 3 RiskEngine tests
+     - 12 Phase 4 PrivacyGuard tests
+     - 10 Phase 4 PolicyGuard tests
+     - 4 Multi-Guard orchestration tests
+     - 17 Phase 5 Arbiter unit and full-pipeline integration tests
+     - 24 Phase 6 Action Provenance DAG tests
+     - 27 Phase 7 Semantic Safety Property Propagation tests
+     - 24 Phase 8 Action Authorization unit, integration, and showcase tests
 
 ---
 
 ## In Progress
 
-Preparing for **Phase 5 — Arbiter & Final Verdict Decision Layer**.
+Preparing for **Phase 9 — Showcase Demonstration & Interactive CLI / Runner**.
 
 ---
 
@@ -113,17 +166,36 @@ Preparing for **Phase 5 — Arbiter & Final Verdict Decision Layer**.
 
 The following do NOT currently exist as production code:
 
-- Content Safety Guard (Phase 4 / Phase 14)
-- Arbiter decision engine (Phase 5)
-- Risk Memory (Phase 6)
-- Action Provenance DAG (Phase 7)
-- Risk / Safety Property Propagation (Phase 8)
+- Content Safety Guard (Phase 14)
+- Risk Memory (Phase 9 / later)
 - Disagreement detector (Phase 9)
 - Bounded Investigation mechanism (Phase 10)
-- Action Authorization (Phase 11)
 - MODIFY workflow (Phase 12)
 - Audit system (Phase 13)
 - External provider integrations or API servers
+
+---
+
+## Accepted Decisions
+
+### Showcase Demonstration (Phase 9)
+
+Implemented in `demo/`:
+
+1. **Interactive Demo Runner (`demo.runner.DemoRunner`):**
+   - Pure live pipeline orchestrator exercising real `RiskEngine`, `SecurityGuard`, `PrivacyGuard`, `PolicyGuard`, `ActionProvenanceDAG`, `PropertyPropagationEngine`, `ActionAuthorizationEngine`, and `Arbiter`.
+   - **Zero hardcoded verdicts**: All decisions dynamically emerge from live component evaluation.
+2. **Predefined Scenarios (`demo.scenarios`):**
+   - Benign query (`What is the capital of Japan?`) -> `ALLOW`.
+   - Direct prompt injection -> `BLOCK`.
+   - Conversational PII (email detection) -> `ALLOW` (informational audit finding).
+   - Policy-forbidden shell command -> `BLOCK`.
+   - Customers.csv exfiltration with multi-step DAG lineage -> `BLOCK`.
+   - Contrasting safe internal transfer -> `ALLOW`.
+3. **Presentable Interfaces:**
+   - Interactive modern Web UI dashboard (`demo/web/index.html`) served via zero-dependency Python `http.server`. Features interactive 6-step data flow stepper, live SVG graph visualization with semantic property labels, guard findings grid, and technical inspector.
+   - Rich ANSI Terminal CLI (`demo.cli`) with ASCII box diagrams and interactive walkthrough.
+   - Unified application launcher (`demo/app.py`).
 
 ---
 
@@ -135,6 +207,8 @@ The following do NOT currently exist as production code:
 - Common Evidence model distinguishing severity and confidence (DD-004).
 - Evidence records are deeply immutable after creation (DD-005).
 - Safety-relevant context is stored separately from full conversation history (DD-006).
+- Action Provenance uses an in-memory DAG data model (DD-007).
+- Risk propagation uses semantic safety properties (DD-008).
 - Simple majority voting is not used for final safety decisions (DD-009).
 - Investigation must be bounded (DD-010).
 - Arbiter is deterministic-first (DD-011).
@@ -146,9 +220,8 @@ The following do NOT currently exist as production code:
 
 ## Proposed / Under Review
 
-- Provenance represented as an in-memory DAG for the prototype (DD-007).
-- Risk propagation based primarily on safety properties/labels rather than a single numeric risk score (DD-008).
 - Severity alone does not directly map to verdict (DD-012).
+- Deterministic Arbiter baseline precedence (DD-016).
 - Four initial guard categories: Security, Privacy, Content Safety, Policy.
 - Optional model-assisted investigation and arbitration for ambiguous cases.
 
@@ -159,7 +232,7 @@ The following do NOT currently exist as production code:
 - Exact Risk Memory expiry policy is unresolved.
 - Exact action-impact classification is unresolved.
 - MODIFY execution semantics need definition.
-- Arbiter baseline rules require evaluation.
+- Arbiter baseline rules require evaluation on benchmark datasets.
 - Investigation trigger conditions require evaluation.
 - Audit persistence beyond a session is unresolved.
 - Content Safety / Policy guard overlap needs evaluation.
@@ -169,6 +242,6 @@ The following do NOT currently exist as production code:
 
 ## Next Step
 
-**Phase 2 — Minimal Security Guard.**
+**Phase 10 — Risk Memory Baseline.**
 
-Implement the first deterministic Security Guard end-to-end to detect obvious prompt-injection patterns and dangerous action requests.
+Implement the first safety-relevant session risk memory tracking significant previous findings and sensitive resources accessed across multi-turn interactions.

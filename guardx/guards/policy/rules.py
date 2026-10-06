@@ -14,6 +14,8 @@ from guardx.guards.policy.risk_types import PolicyRiskType
 
 def _extract_action_name(payload: Any) -> Optional[str]:
     """Extract action/tool identifier from payload."""
+    if hasattr(payload, "action_name") and isinstance(payload.action_name, str) and payload.action_name.strip():
+        return payload.action_name.strip()
     if isinstance(payload, dict):
         for key in ("action", "name", "tool", "command", "tool_name"):
             val = payload.get(key)

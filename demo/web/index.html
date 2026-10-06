@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GuardX — Runtime Safety Framework for Agentic AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070a12;
+      --bg-surface: #0e1526;
+      --bg-card: #141e34;
+      --bg-card-hover: #1a2846;
+      --border-subtle: #1e2d4d;
+      --border-accent: #2d4373;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --color-block: #ef4444;
+      --color-block-glow: rgba(239, 68, 68, 0.25);
+      --color-allow: #10b981;
+      --color-allow-glow: rgba(16, 185, 129, 0.25);
+      --color-review: #f59e0b;
+      --color-review-glow: rgba(245, 158, 11, 0.25);
+      --color-primary: #3b82f6;
+      --color-primary-glow: rgba(59, 130, 246, 0.25);
+      --color-purple: #8b5cf6;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(180deg, rgba(14, 21, 38, 0.9) 0%, rgba(7, 10, 18, 0.8) 100%);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 1.25rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: #fff;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+    }
+
+    .brand h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: #fff;
+    }
+
+    .brand p {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 0.35rem 0.875rem;
+      border-radius: 9999px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--color-allow);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-allow);
+      box-shadow: 0 0 8px var(--color-allow);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Container */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Scenario Bar */
+    .scenarios-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .section-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .scenario-btn {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s ease;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .scenario-btn:hover {
+      background: var(--bg-card);
+      border-color: var(--border-accent);
+      color: var(--text-main);
+      transform: translateY(-2px);
+    }
+
+    .scenario-btn.active {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+      border-color: var(--color-primary);
+      color: #fff;
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+    }
+
+    .scenario-btn.active::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      border-top-left-radius: var(--radius-md);
+      border-top-right-radius: var(--radius-md);
+    }
+
+    .scenario-tag {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-primary);
+    }
+
+    .scenario-title {
+      font-size: 0.9375rem;
+      font-weight: 600;
+    }
+
+    /* Showcase Toggle */
+    .showcase-toggle-bar {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .toggle-group {
+      display: inline-flex;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.25rem;
+    }
+
+    .toggle-btn {
+      background: transparent;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .toggle-btn.active.unsafe {
+      background: var(--color-block);
+      color: #fff;
+      box-shadow: 0 0 12px var(--color-block-glow);
+    }
+
+    .toggle-btn.active.safe {
+      background: var(--color-allow);
+      color: #fff;
+      box-shadow: 0 0 12px var(--color-allow-glow);
+    }
+
+    /* Stepper */
+    .stepper-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .stepper-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stepper-controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .stepper-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 0.4rem 0.875rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .stepper-btn:hover:not(:disabled) {
+      background: var(--bg-card-hover);
+      border-color: var(--border-accent);
+    }
+
+    .stepper-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .steps-timeline {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.5rem;
+      position: relative;
+    }
+
+    .step-node {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.625rem;
+      font-size: 0.75rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .step-node.completed {
+      border-color: var(--color-primary);
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .step-node.current {
+      border-color: var(--color-purple);
+      background: rgba(139, 92, 246, 0.2);
+      font-weight: 700;
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+    }
+
+    /* Main Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Verdict Hero Banner */
+    .verdict-banner {
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .verdict-banner.BLOCK {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(14, 21, 38, 0.95) 100%);
+      border: 1px solid var(--color-block);
+      box-shadow: 0 0 35px var(--color-block-glow);
+    }
+
+    .verdict-banner.ALLOW {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(14, 21, 38, 0.95) 100%);
+      border: 1px solid var(--color-allow);
+      box-shadow: 0 0 35px var(--color-allow-glow);
+    }
+
+    .verdict-banner.HUMAN_REVIEW {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(14, 21, 38, 0.95) 100%);
+      border: 1px solid var(--color-review);
+      box-shadow: 0 0 35px var(--color-review-glow);
+    }
+
+    .verdict-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .verdict-pill {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      padding: 0.5rem 1.5rem;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .verdict-banner.BLOCK .verdict-pill {
+      background: var(--color-block);
+      color: #fff;
+    }
+
+    .verdict-banner.ALLOW .verdict-pill {
+      background: var(--color-allow);
+      color: #fff;
+    }
+
+    .verdict-banner.HUMAN_REVIEW .verdict-pill {
+      background: var(--color-review);
+      color: #fff;
+    }
+
+    .verdict-reason {
+      font-size: 1.0625rem;
+      color: #fff;
+      font-weight: 500;
+    }
+
+    .verdict-meta {
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Provenance DAG Viewer */
+    .dag-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .dag-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .dag-node-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .dag-node-card.has-sensitive {
+      border-color: rgba(239, 68, 68, 0.4);
+      background: rgba(239, 68, 68, 0.05);
+    }
+
+    .dag-node-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .node-type-badge {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .node-type-RESOURCE { background: #3b82f6; color: #fff; }
+    .node-type-DATA { background: #8b5cf6; color: #fff; }
+    .node-type-TRANSFORMATION { background: #f59e0b; color: #fff; }
+
+    .node-id-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .prop-badges {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+
+    .prop-badge {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    .prop-badge.clean {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #86efac;
+    }
+
+    .flow-arrow {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Guard Grid */
+    .guard-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .guard-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.875rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .guard-name {
+      font-size: 0.8125rem;
+      font-weight: 700;
+    }
+
+    .guard-status-badge {
+      display: inline-block;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: var(--color-allow);
+    }
+
+    .guard-item.has-findings {
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+
+    .guard-item.has-findings .guard-status-badge {
+      color: var(--color-block);
+    }
+
+    /* Evidence List */
+    .evidence-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .evidence-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-left: 4px solid var(--color-block);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .evidence-card.allow-finding {
+      border-color: rgba(16, 185, 129, 0.3);
+      border-left-color: var(--color-allow);
+    }
+
+    .evidence-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .evidence-type {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .pill-badge {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+    }
+
+    .pill-badge.BLOCK { background: var(--color-block); color: #fff; }
+    .pill-badge.ALLOW { background: var(--color-allow); color: #fff; }
+    .pill-badge.HUMAN_REVIEW { background: var(--color-review); color: #fff; }
+
+    .evidence-desc {
+      font-size: 0.875rem;
+      color: var(--text-main);
+    }
+
+    /* Callout Card */
+    .callout-box {
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    .callout-title {
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 0.25rem;
+    }
+
+    /* JSON Debug */
+    details {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1rem;
+    }
+
+    summary {
+      font-weight: 600;
+      font-size: 0.8125rem;
+      color: var(--text-dim);
+      cursor: pointer;
+    }
+
+    pre {
+      margin-top: 0.75rem;
+      background: var(--bg-dark);
+      padding: 1rem;
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="logo-badge">GX</div>
+      <div>
+        <h1>GuardX Runtime Safety</h1>
+        <p>Execution-Aware Safety Framework for Agentic AI Systems</p>
+      </div>
+    </div>
+    <div class="status-pill">
+      <span class="status-dot"></span>
+      Deterministic Core Active (Phases 1–8)
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Scenario Selector -->
+    <div class="scenarios-section">
+      <div class="section-title">Predefined Test Scenarios</div>
+      <div class="scenario-grid" id="scenarioGrid">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+
+    <!-- Showcase Toggle & Stepper (Visible when in Showcase Scenario) -->
+    <div class="showcase-toggle-bar" id="showcaseBar" style="display: none;">
+      <div>
+        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">Showcase Flow Variant</div>
+        <div style="font-size: 0.9375rem; font-weight: 600;">Data Lineage & Egress Demonstration</div>
+      </div>
+      <div class="toggle-group">
+        <button class="toggle-btn active unsafe" id="toggleUnsafeBtn" onclick="switchShowcaseVariant('data_exfiltration_unsafe')">
+          🚨 Unsafe Egress (External)
+        </button>
+        <button class="toggle-btn safe" id="toggleSafeBtn" onclick="switchShowcaseVariant('data_exfiltration_safe')">
+          🛡️ Safe Egress (Internal)
+        </button>
+      </div>
+    </div>
+
+    <!-- Stepper (Visible for Showcase) -->
+    <div class="stepper-card" id="stepperCard" style="display: none;">
+      <div class="stepper-header">
+        <div>
+          <span style="font-size: 0.75rem; font-weight: 700; color: var(--color-purple); text-transform: uppercase;">Step-by-Step Walkthrough</span>
+          <h3 id="currentStepTitle" style="font-size: 1rem; font-weight: 700;">Step 1: Resource Read</h3>
+        </div>
+        <div class="stepper-controls">
+          <button class="stepper-btn" id="prevStepBtn" onclick="prevStep()">◀ Previous</button>
+          <button class="stepper-btn" id="nextStepBtn" onclick="nextStep()">Next Step ▶</button>
+          <button class="stepper-btn" id="playAllBtn" onclick="runFullScenario()">Complete Run ⏩</button>
+        </div>
+      </div>
+      <div class="steps-timeline" id="stepsTimeline">
+        <!-- 6 Steps injected here -->
+      </div>
+      <div id="stepDetailText" style="font-size: 0.8125rem; color: var(--text-muted); background: var(--bg-card); padding: 0.75rem; border-radius: var(--radius-sm);"></div>
+    </div>
+
+    <!-- Verdict Hero Banner -->
+    <div class="verdict-banner BLOCK" id="verdictBanner">
+      <div class="verdict-top">
+        <div class="verdict-pill" id="verdictPill">
+          <span>✖</span> BLOCK
+        </div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.875rem;" id="verdictCode">
+          POLICY_BLOCK_RECOMMENDED
+        </div>
+      </div>
+      <div class="verdict-reason" id="verdictReason">
+        Evaluating...
+      </div>
+      <div class="verdict-meta">
+        <span>Interception: <strong id="metaInterception" style="color: #fff;">ACTION</strong></span>
+        <span>Findings Count: <strong id="metaFindingsCount" style="color: #fff;">1</strong></span>
+        <span>Latency: <strong id="metaLatency" style="color: #fff;">0.65ms</strong></span>
+        <span>Decision Ownership: <strong style="color: #fff;">Arbiter Baseline (DD-016)</strong></span>
+      </div>
+    </div>
+
+    <!-- Dashboard Main Grid -->
+    <div class="dashboard-grid">
+
+      <!-- Left Column: Event & Provenance -->
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <!-- Event Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>⚡ Intercepted Safety Event</span>
+            </div>
+            <span class="node-type-badge" id="eventPointBadge">ACTION</span>
+          </div>
+          <div id="eventDetails" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; color: var(--text-main); background: var(--bg-card); padding: 1rem; border-radius: var(--radius-sm); white-space: pre-wrap; word-break: break-all;"></div>
+        </div>
+
+        <!-- Provenance DAG Card -->
+        <div class="card" id="provenanceCard">
+          <div class="card-header">
+            <div class="card-title">
+              <span>🧬 Provenance DAG & Property Propagation</span>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;" id="dagNodeCount">0 nodes</span>
+          </div>
+          <p style="font-size: 0.8125rem; color: var(--text-muted);">
+            Traces data lineage backwards to sensitive source assets and forward along computational transformations.
+          </p>
+          <div class="dag-container" id="dagContainer">
+            <div class="dag-flow" id="dagFlowList">
+              <!-- Nodes injected here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Real vs Simulated Box -->
+        <div class="callout-box">
+          <div class="callout-title">🔍 Verification Scope (Real vs. Simulated)</div>
+          <ul id="simulatedScopeList" style="margin-left: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem;">
+            <!-- Injected -->
+          </ul>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Guard Execution & Evidence -->
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <!-- Guard Execution Summary -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>🛡️ Guard Analysis Orchestration</span>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-dim);">Pure Python Stdlib</span>
+          </div>
+          <div class="guard-cards" id="guardCardsGrid">
+            <!-- Injected -->
+          </div>
+        </div>
+
+        <!-- Evidence Inspector -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span>📋 Deeply Immutable Evidence Records</span>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-dim);" id="evidenceCountBadge">0 findings</span>
+          </div>
+          <div class="evidence-list" id="evidenceList">
+            <!-- Injected -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Developer Raw Inspector -->
+    <details>
+      <summary>Technical / Developer Inspector (Raw Serialization)</summary>
+      <pre id="rawJsonOutput">Loading...</pre>
+    </details>
+
+  </div>
+
+  <script>
+    let currentScenarioId = 'data_exfiltration_unsafe';
+    let currentStep = null;
+    let scenariosData = {};
+
+    async function loadScenarios() {
+      try {
+        const res = await fetch('/api/scenarios');
+        scenariosData = await res.json();
+        renderScenarioButtons();
+        selectScenario('data_exfiltration_unsafe');
+      } catch (err) {
+        console.error("Failed to load scenarios:", err);
+      }
+    }
+
+    function renderScenarioButtons() {
+      const grid = document.getElementById('scenarioGrid');
+      grid.innerHTML = '';
+      for (const [id, s] of Object.entries(scenariosData)) {
+        const btn = document.createElement('button');
+        btn.className = `scenario-btn ${id === currentScenarioId ? 'active' : ''}`;
+        btn.id = `scenario_btn_${id}`;
+        btn.onclick = () => selectScenario(id);
+        btn.innerHTML = `
+          <span class="scenario-tag">${s.category}</span>
+          <span class="scenario-title">${s.title.split(':')[1] ? s.title.split(':')[1].trim() : s.title}</span>
+        `;
+        grid.appendChild(btn);
+      }
+    }
+
+    async function selectScenario(id, step = null) {
+      currentScenarioId = id;
+      currentStep = step;
+
+      // Update active button
+      document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.getElementById(`scenario_btn_${id}`);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const isShowcase = id === 'data_exfiltration_unsafe' || id === 'data_exfiltration_safe';
+      document.getElementById('showcaseBar').style.display = isShowcase ? 'flex' : 'none';
+      document.getElementById('stepperCard').style.display = isShowcase ? 'flex' : 'none';
+
+      if (isShowcase) {
+        document.getElementById('toggleUnsafeBtn').className = `toggle-btn ${id === 'data_exfiltration_unsafe' ? 'active unsafe' : ''}`;
+        document.getElementById('toggleSafeBtn').className = `toggle-btn ${id === 'data_exfiltration_safe' ? 'active safe' : ''}`;
+      }
+
+      await executeCurrentScenario();
+    }
+
+    function switchShowcaseVariant(variantId) {
+      currentStep = null;
+      selectScenario(variantId);
+    }
+
+    async function executeCurrentScenario() {
+      try {
+        const res = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            scenario_id: currentScenarioId,
+            up_to_step: currentStep
+          })
+        });
+        const data = await res.json();
+        renderResults(data);
+      } catch (err) {
+        console.error("Execution failed:", err);
+      }
+    }
+
+    function renderResults(data) {
+      // 1. Verdict Banner
+      const banner = document.getElementById('verdictBanner');
+      const pill = document.getElementById('verdictPill');
+      const verdict = data.arbiter.verdict;
+
+      banner.className = `verdict-banner ${verdict}`;
+      pill.innerHTML = verdict === 'BLOCK' ? '<span>✖</span> BLOCK' : (verdict === 'ALLOW' ? '<span>✔</span> ALLOW' : `<span>⚠</span> ${verdict}`);
+      document.getElementById('verdictCode').textContent = data.arbiter.reason_code;
+      document.getElementById('verdictReason').textContent = data.arbiter.reason;
+
+      document.getElementById('metaInterception').textContent = data.event.interception_point;
+      document.getElementById('metaFindingsCount').textContent = data.evidence.length;
+      document.getElementById('metaLatency').textContent = `${data.execution_time_ms} ms`;
+
+      // 2. Stepper rendering if applicable
+      const isShowcase = data.scenario.total_steps > 0;
+      if (isShowcase) {
+        const timeline = document.getElementById('stepsTimeline');
+        timeline.innerHTML = '';
+        const curStepNum = data.scenario.current_step || data.scenario.total_steps;
+
+        data.scenario.steps.forEach((s) => {
+          const node = document.createElement('div');
+          const isCurrent = s.step_number === curStepNum;
+          const isCompleted = s.step_number <= curStepNum;
+          node.className = `step-node ${isCurrent ? 'current' : ''} ${isCompleted ? 'completed' : ''}`;
+          node.innerHTML = `<strong>Step ${s.step_number}</strong><br><span style="font-size:0.6875rem">${s.title}</span>`;
+          node.onclick = () => selectScenario(currentScenarioId, s.step_number);
+          timeline.appendChild(node);
+        });
+
+        const activeStepData = data.scenario.steps.find(s => s.step_number === curStepNum) || data.scenario.steps[0];
+        document.getElementById('currentStepTitle').textContent = `Step ${activeStepData.step_number}/6: ${activeStepData.title}`;
+        document.getElementById('stepDetailText').innerHTML = `
+          <strong>Action Type:</strong> ${activeStepData.action_type} &nbsp;|&nbsp;
+          <strong>Description:</strong> ${activeStepData.description}<br>
+          <strong>Detail:</strong> ${activeStepData.detail}
+        `;
+
+        document.getElementById('prevStepBtn').disabled = curStepNum <= 1;
+        document.getElementById('nextStepBtn').disabled = curStepNum >= data.scenario.total_steps;
+      }
+
+      // 3. Event Details
+      document.getElementById('eventPointBadge').textContent = data.event.interception_point;
+      if (typeof data.event.payload === 'object') {
+        document.getElementById('eventDetails').textContent = JSON.stringify(data.event.payload, null, 2);
+      } else {
+        document.getElementById('eventDetails').textContent = `"${data.event.payload}"`;
+      }
+
+      // 4. Provenance DAG Flow
+      const dagContainer = document.getElementById('provenanceCard');
+      const dagFlowList = document.getElementById('dagFlowList');
+      dagFlowList.innerHTML = '';
+
+      if (data.dag.nodes.length > 0) {
+        dagContainer.style.display = 'flex';
+        document.getElementById('dagNodeCount').textContent = `${data.dag.nodes.length} nodes`;
+
+        data.dag.nodes.forEach((node, idx) => {
+          const card = document.createElement('div');
+          const hasSens = node.effective_properties.length > 0;
+          card.className = `dag-node-card ${hasSens ? 'has-sensitive' : ''}`;
+
+          let propBadges = '';
+          if (node.effective_properties.length > 0) {
+            propBadges = node.effective_properties.map(p => `<span class="prop-badge">${p}</span>`).join('');
+          } else {
+            propBadges = `<span class="prop-badge clean">CLEAN</span>`;
+          }
+
+          card.innerHTML = `
+            <div class="dag-node-info">
+              <span class="node-type-badge node-type-${node.type}">${node.type}</span>
+              <div>
+                <div class="node-id-text">${node.id}</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim);">${node.description || (node.resource_ref ? 'Ref: ' + node.resource_ref : '')}</div>
+              </div>
+            </div>
+            <div class="prop-badges">
+              ${propBadges}
+            </div>
+          `;
+          dagFlowList.appendChild(card);
+
+          if (idx < data.dag.nodes.length - 1) {
+            const arrow = document.createElement('div');
+            arrow.className = 'flow-arrow';
+            arrow.innerHTML = '│<br>▼';
+            dagFlowList.appendChild(arrow);
+          }
+        });
+      } else {
+        dagContainer.style.display = 'none';
+      }
+
+      // 5. Real vs Simulated Scope List
+      const scopeList = document.getElementById('simulatedScopeList');
+      scopeList.innerHTML = '';
+      for (const [k, v] of Object.entries(data.scenario.simulated_context)) {
+        scopeList.innerHTML += `<li><strong>${k}:</strong> ${v}</li>`;
+      }
+
+      // 6. Guards Execution Records
+      const guardGrid = document.getElementById('guardCardsGrid');
+      guardGrid.innerHTML = '';
+      data.guards.forEach(g => {
+        const item = document.createElement('div');
+        const hasFindings = g.findings_count > 0;
+        item.className = `guard-item ${hasFindings ? 'has-findings' : ''}`;
+        item.innerHTML = `
+          <div class="guard-name">${g.guard_name}</div>
+          <div class="guard-status-badge">${g.status} (${g.duration_ms}ms)</div>
+          <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.25rem;">Findings: <strong>${g.findings_count}</strong></div>
+        `;
+        guardGrid.appendChild(item);
+      });
+
+      // 7. Evidence Findings
+      const evidenceList = document.getElementById('evidenceList');
+      evidenceList.innerHTML = '';
+      document.getElementById('evidenceCountBadge').textContent = `${data.evidence.length} findings`;
+
+      if (data.evidence.length === 0) {
+        evidenceList.innerHTML = `
+          <div style="background: rgba(16, 185, 129, 0.05); border: 1px dashed rgba(16, 185, 129, 0.3); border-radius: var(--radius-sm); padding: 1.5rem; text-align: center; color: var(--color-allow); font-size: 0.875rem;">
+            ✔ Clean Evaluation: No safety or policy violations emitted.
+          </div>
+        `;
+      } else {
+        data.evidence.forEach(ev => {
+          const card = document.createElement('div');
+          card.className = `evidence-card ${ev.recommended_action === 'ALLOW' ? 'allow-finding' : ''}`;
+          card.innerHTML = `
+            <div class="evidence-top">
+              <span class="evidence-type">${ev.risk_type}</span>
+              <span class="pill-badge ${ev.recommended_action}">${ev.recommended_action}</span>
+            </div>
+            <div class="evidence-desc">${ev.description}</div>
+            <div style="font-size: 0.75rem; color: var(--text-dim); display: flex; gap: 1rem;">
+              <span>Source: <strong>${ev.source_guard}</strong></span>
+              <span>Severity: <strong>${ev.severity}</strong></span>
+              <span>Confidence: <strong>${ev.confidence}</strong></span>
+            </div>
+          `;
+          evidenceList.appendChild(card);
+        });
+      }
+
+      // 8. Raw JSON Output
+      document.getElementById('rawJsonOutput').textContent = JSON.stringify(data, null, 2);
+    }
+
+    function prevStep() {
+      const cur = currentStep || 6;
+      if (cur > 1) {
+        selectScenario(currentScenarioId, cur - 1);
+      }
+    }
+
+    function nextStep() {
+      const cur = currentStep || 1;
+      if (cur < 6) {
+        selectScenario(currentScenarioId, cur + 1);
+      }
+    }
+
+    function runFullScenario() {
+      selectScenario(currentScenarioId, null);
+    }
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', loadScenarios);
+  </script>
+</body>
+</html>
